@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Todo App</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+
+</head>
+<body>
+<nav class="navbar d-flex align-items-center justify-content-center px-2 navbar-light bg-light">
+  <h4 class="fw-lighter">TODO APP</h4>
+</nav>
+  <div class="d-flex flex-column bg-info h-100 w-100 p-3">
+    <div class="mt-3 d-flex gap-2">
+      <input type="text" id="searchTodo" class="form-control my-2"
+      placeholder="search todos"></input>
+      <select id="sortTodo" class="form-select my-2">
+        <option value="latest">Latest</option>
+        <option value="oldest">Oldest</option>
+        <option value="longest">Longest</option>
+        <option value="shortest">Shortest</option>
+      </select>
+    </div>
+
+    <div class="Todo d-flex">
+      <input type="text" id="addTodo" placeholder="Add todo" class="form-control mx-2"></input>
+      <button id="addBtn" class="btn btn-dark">Add</button>
+    </div>
+
+    <div class="addedTodo my-2">
+      <ul id="Todos" class="list-group"></ul>
+    </div>
+  </div>
+
+  <script>
+const addBtn = document.getElementById("addBtn");
+const todoBlock = document.getElementById("Todos");
+const todos = JSON.parse(localStorage.getItem("todos")) || [];
+
+function renderTodos() {
+  todoBlock.innerHTML = "";
+  todos.forEach((todo, index) => {
+    const newTodo = createTodoElement(todo, index);
+    todoBlock.appendChild(newTodo);
+    renderSubTodos(todo.subTodos, index);
+  });
+}
+
+function createTodoElement(todo, index) {
+  const newTodo = document.createElement("li");
+  newTodo.className = "list-group-item";
+  newTodo.innerHTML = `
+    <div class="d-flex justify-content-between align-items-center">
+      <span>${todo.text}</span>
+      <div>
+        <button class="btn btn-dark btn-sm editBtn" data-index="${index}">Edit</button>
+        <button class="btn btn-dark btn-sm deleteBtn" data-index="${index}">Delete</button>
+        <button class="btn btn-dark btn-sm addSubTodoBtn" data-index="${index}">Add Sub-Todo</button>
+      </div>
+    </div>
+    <ul id="subTodos-${index}" class="list-group mt-2"></ul>
+  `;
+  return newTodo;
+}
+
+function renderSubTodos(subTodos, parentIndex) {
+  const subTodoList = document.getElementById(`subTodos-${parentIndex}`);
+  subTodoList.innerHTML = "";
+  subTodos.forEach((subTodo, subIndex) => {
+    const subTodoItem = createSubTodoElement(subTodo, parentIndex, subIndex);
+    subTodoList.appendChild(subTodoItem);
+  });
+}
+
+function createSubTodoElement(subTodo, parentIndex, subIndex) {
+  const subTodoItem = document.createElement("li");
+  subTodoItem.className = "list-group-item";
+  subTodoItem.innerHTML = `
+    <div class="d-flex justify-content-between align-items-center">
+      <span>${subTodo.text}</span>
+      <div>
+        <button class="btn btn-dark btn-sm editSubTodoBtn" data-parent="${parentIndex}" data-index="${subIndex}">Edit</button>
+        <button class="btn btn-dark btn-sm deleteSubTodoBtn" data-parent="${parentIndex}" data-index="${subIndex}">Delete</button>
+      </div>
+    </div>
+  `;
+  return subTodoItem;
+}
+
+addBtn.addEventListener("click", function () {
+  const todoValue = document.getElementById("addTodo").value;
+  if (todoValue) {
+    todos.push({
+      text: todoValue,
+      subTodos: []
+    });
+    localStorage.setItem("todos", JSON.stringify(todos));
+    renderTodos();
+    document.getElementById("addTodo").value = "";
+  }
+});
+
+todoBlock.addEventListener("click", function (e) {
+  if (e.target.classList.contains("deleteBtn")) {
+    const index = e.target.getAttribute("data-index");
+    todos.splice(index, 1);
+    localStorage.setItem("todos", JSON.stringify(todos));
+    renderTodos();
+  } else if (e.target.classList.contains("editBtn")) {
+    const index = e.target.getAttribute("data-index");
+    const updatedText = prompt("Edit the todo:", todos[index].text);
+    if (updatedText !== null) {
+      todos[index].text = updatedText;
+      localStorage.setItem("todos", JSON.stringify(todos));
+      renderTodos();
+    }
+  } else if (e.target.classList.contains("addSubTodoBtn")) {
+    const index = e.target.getAttribute("data-index");
+    const subTodoText = prompt("Add a sub-todo:");
+    if (subTodoText !== null) {
+      todos[index].subTodos.push({ text: subTodoText });
+      localStorage.setItem("todos", JSON.stringify(todos));
+      renderSubTodos(todos[index].subTodos, index);
+    }
+  }
+});
+
+// Handling sub-todo editing and deletion
+todoBlock.addEventListener("click", function (e) {
+  if (e.target.classList.contains("editSubTodoBtn")) {
+    const parentIndex = e.target.getAttribute("data-parent");
+    const subIndex = e.target.getAttribute("data-index");
+    const updatedText = prompt("Edit the sub-todo:", todos[parentIndex].subTodos[subIndex].text);
+    if (updatedText !== null) {
+      todos[parentIndex].subTodos[subIndex].text = updatedText;
+      localStorage.setItem("todos", JSON.stringify(todos));
+      renderSubTodos(todos[parentIndex].subTodos, parentIndex);
+    }
+  } else if (e.target.classList.contains("deleteSubTodoBtn")) {
+    const parentIndex = e.target.getAttribute("data-parent");
+    const subIndex = e.target.getAttribute("data-index");
+    todos[parentIndex].subTodos.splice(subIndex, 1);
+    localStorage.setItem("todos", JSON.stringify(todos));
+    renderSubTodos(todos[parentIndex].subTodos, parentIndex);
+  }
+});
+
+const searchInput = document.getElementById("searchTodo");
+searchInput.addEventListener("input", function () {
+  const searchText = searchInput.value.toLowerCase();
+  const filteredTodos = todos.filter((todo) =>
+    todo.text.toLowerCase().includes(searchText)
+  );
+  renderFilteredTodos(filteredTodos);
+});
+
+function renderFilteredTodos(filteredTodos) {
+  todoBlock.innerHTML = "";
+  filteredTodos.forEach((todo, index) => {
+    const newTodo = createTodoElement(todo, index);
+    todoBlock.appendChild(newTodo);
+    renderSubTodos(todo.subTodos, index);
+  });
+}
+
+const sortSelect = document.getElementById("sortTodo");
+sortSelect.addEventListener("change", function () {
+  const sortOption = sortSelect.value;
+  const sortedTodos = [...todos];
+  if (sortOption === "latest") {
+    sortedTodos.sort((a, b) => b.date - a.date);
+  } else if (sortOption === "oldest") {
+    sortedTodos.sort((a, b) => a.date - b.date);
+  } else if (sortOption === "longest") {
+    sortedTodos.sort((a, b) => b.text.length - a.text.length);
+  } else if (sortOption === "shortest") {
+    sortedTodos.sort((a, b) => a.text.length - b.text.length);
+  }
+  renderFilteredTodos(sortedTodos);
+});
+
+renderTodos();
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+</body>
+</html>
